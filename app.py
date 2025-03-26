@@ -6,11 +6,16 @@ from flask_cors import CORS
 import json
 from datetime import datetime
 from transformers import pipeline
+import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
-app.config['SECRET_KEY'] = 'your-secret-key'  # Change this in production
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///fitness.db'
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')  # Change this in production
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')  # Change this in production
 db = SQLAlchemy(app)
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -92,8 +97,12 @@ EXERCISE_DATABASE = {
 }
 
 def get_ai_workout(user):
-    # Initialize the text generation pipeline
-    generator = pipeline('text-generation', model='gpt2-medium')
+    # Initialize the text generation pipeline with API key
+    api_key = os.getenv('HUGGINGFACE_API_KEY')
+    if not api_key:
+        raise ValueError("Hugging Face API key not found. Please set HUGGINGFACE_API_KEY in your .env file")
+    
+    generator = pipeline('text-generation', model='gpt2-medium', token=api_key)
     
     # Select exercises based on user's profile
     workout_exercises = []
