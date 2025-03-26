@@ -1,21 +1,30 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
-from werkzeug.security import generate_password_hash, check_password_hash
 from flask_cors import CORS
-import json
-from datetime import datetime
 from transformers import pipeline
+from werkzeug.security import generate_password_hash, check_password_hash
+from datetime import datetime
 import os
+import logging
 from dotenv import load_dotenv
+
+# Configure logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 # Load environment variables
 load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')  # Change this in production
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')  # Change this in production
+
+# Configuration
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'default-dev-key')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///fitness.db')
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Initialize extensions
 db = SQLAlchemy(app)
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -24,12 +33,20 @@ login_manager.login_view = 'login'
 # Models
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), unique=True, nullable=False)
-    password_hash = db.Column(db.String(120), nullable=False)
-    age = db.Column(db.Integer)
-    weight = db.Column(db.Float)
-    fitness_goal = db.Column(db.String(50))
-    experience_level = db.Column(db.String(50))
+    username = db.Column(db.String(64), unique=True, nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    password_hash = db.Column(db.String(128))
+    age = db.Column(db.Integer, nullable=False)
+    weight = db.Column(db.Float, nullable=False)
+    fitness_goal = db.Column(db.String(50), nullable=False)
+    experience_level = db.Column(db.String(50), nullable=False)
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+
     workouts = db.relationship('Workout', backref='user', lazy=True)
 
 class Workout(db.Model):
@@ -191,24 +208,65 @@ def index():
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
-        age = request.form.get('age')
-        weight = request.form.get('weight')
-        fitness_goal = request.form.get('fitness_goal')
-        experience_level = request.form.get('experience_level')
-
-        user = User(
-            username=username,
-            password_hash=generate_password_hash(password),
-            age=age,
-            weight=weight,
-            fitness_goal=fitness_goal,
-            experience_level=experience_level
-        )
-        db.session.add(user)
-        db.session.commit()
-        return redirect(url_for('login'))
+        try:
+            # Get form data
+            username = request.form.get('username')
+            email = request.form.get('email')
+            password = request.form.get('password')
+            
+            # Log received data (excluding password)
+            logger.debug(f"Registration attempt - Username: {username}, Email: {email}")
+            
+            # Validate required fields
+            if not all([username, email, password]):
+                flash('All fields are required', 'danger')
+                return redirect(url_for('register'))
+            
+            try:
+                age = int(request.form.get('age', 0))
+                weight = float(request.form.get('weight', 0))
+            except ValueError:
+                flash('Age and weight must be valid numbers', 'danger')
+                return redirect(url_for('register'))
+            
+            fitness_goal = request.form.get('fitness_goal', 'maintenance')
+            experience_level = request.form.get('experience_level', 'beginner')
+            
+            # Check if username exists
+            if User.query.filter_by(username=username).first():
+                flash('Username already exists', 'danger')
+                return redirect(url_for('register'))
+            
+            # Check if email exists
+            if User.query.filter_by(email=email).first():
+                flash('Email already registered', 'danger')
+                return redirect(url_for('register'))
+            
+            # Create new user
+            user = User(
+                username=username,
+                email=email,
+                age=age,
+                weight=weight,
+                fitness_goal=fitness_goal,
+                experience_level=experience_level
+            )
+            user.set_password(password)
+            
+            # Add to database
+            db.session.add(user)
+            db.session.commit()
+            
+            logger.info(f"Successfully registered user: {username}")
+            flash('Registration successful! Please login.', 'success')
+            return redirect(url_for('login'))
+            
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Registration error: {str(e)}")
+            flash('Registration failed. Please try again.', 'danger')
+            return redirect(url_for('register'))
+    
     return render_template('register.html')
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -217,9 +275,12 @@ def login():
         username = request.form.get('username')
         password = request.form.get('password')
         user = User.query.filter_by(username=username).first()
-        if user and check_password_hash(user.password_hash, password):
+        
+        if user and user.check_password(password):
             login_user(user)
+            flash('Logged in successfully!', 'success')
             return redirect(url_for('dashboard'))
+        
         flash('Invalid username or password', 'danger')
     return render_template('login.html')
 
