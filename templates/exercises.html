@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Exercise Library</h1>
+        {% if current_user.is_authenticated %}
+        <a href="{{ url_for('new_exercise') }}" class="btn btn-primary">Add New Exercise</a>
+        {% endif %}
+    </div>
+
+    <div class="row row-cols-1 row-cols-md-3 g-4">
+        {% for exercise in exercises %}
+        <div class="col">
+            <div class="card h-100">
+                {% if exercise.image_url %}
+                <img src="{{ exercise.image_url }}" class="card-img-top" alt="{{ exercise.name }}">
+                {% endif %}
+                <div class="card-body">
+                    <h5 class="card-title">{{ exercise.name }}</h5>
+                    <p class="card-text">{{ exercise.description[:100] }}...</p>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="badge bg-primary">{{ exercise.category }}</span>
+                        <span class="badge bg-secondary">{{ exercise.difficulty }}</span>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <a href="{{ url_for('view_exercise', id=exercise.id) }}" class="btn btn-outline-primary btn-sm">View Details</a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

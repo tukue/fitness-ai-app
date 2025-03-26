@@ -1,9 +1,10 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from flask_cors import CORS
 from transformers import pipeline
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import secure_filename
 from datetime import datetime
 import os
 import logging
@@ -23,6 +24,9 @@ CORS(app)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'default-dev-key')
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///fitness.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['UPLOAD_FOLDER'] = os.path.join(app.root_path, 'static', 'media', 'exercises')
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'mp4', 'webm'}
 
 # Initialize extensions
 db = SQLAlchemy(app)
@@ -63,9 +67,88 @@ class Exercise(db.Model):
     reps = db.Column(db.Integer)
     weight = db.Column(db.Float)
 
-@login_manager.user_loader
-def load_user(user_id):
-    return User.query.get(int(user_id))
+class ExerciseMedia(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text, nullable=False)
+    image_filename = db.Column(db.String(255))
+    video_filename = db.Column(db.String(255))
+    category = db.Column(db.String(50), nullable=False)  # e.g., 'strength', 'cardio', 'flexibility'
+    difficulty = db.Column(db.String(20), nullable=False)  # 'beginner', 'intermediate', 'advanced'
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'description': self.description,
+            'image_url': url_for('static', filename=f'media/exercises/images/{self.image_filename}') if self.image_filename else None,
+            'video_url': url_for('static', filename=f'media/exercises/videos/{self.video_filename}') if self.video_filename else None,
+            'category': self.category,
+            'difficulty': self.difficulty
+        }
+
+# Helper function to check if a file has an allowed extension
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+# Route to list all exercises
+@app.route('/exercises', methods=['GET'])
+def list_exercises():
+    exercises = ExerciseMedia.query.all()
+    return render_template('exercises.html', exercises=[ex.to_dict() for ex in exercises])
+
+# Route to view an exercise
+@app.route('/exercises/<int:id>', methods=['GET'])
+def view_exercise(id):
+    exercise = ExerciseMedia.query.get_or_404(id)
+    return render_template('exercise_detail.html', exercise=exercise.to_dict())
+
+# Route to create a new exercise
+@app.route('/exercises/new', methods=['GET', 'POST'])
+@login_required
+def new_exercise():
+    if request.method == 'POST':
+        try:
+            name = request.form.get('name')
+            description = request.form.get('description')
+            category = request.form.get('category')
+            difficulty = request.form.get('difficulty')
+
+            # Handle image upload
+            image_file = request.files.get('image')
+            image_filename = None
+            if image_file and allowed_file(image_file.filename):
+                image_filename = secure_filename(image_file.filename)
+                image_file.save(os.path.join(app.config['UPLOAD_FOLDER'], 'images', image_filename))
+
+            # Handle video upload
+            video_file = request.files.get('video')
+            video_filename = None
+            if video_file and allowed_file(video_file.filename):
+                video_filename = secure_filename(video_file.filename)
+                video_file.save(os.path.join(app.config['UPLOAD_FOLDER'], 'videos', video_filename))
+
+            exercise = ExerciseMedia(
+                name=name,
+                description=description,
+                image_filename=image_filename,
+                video_filename=video_filename,
+                category=category,
+                difficulty=difficulty
+            )
+
+            db.session.add(exercise)
+            db.session.commit()
+            flash('Exercise created successfully!', 'success')
+            return redirect(url_for('list_exercises'))
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Error creating exercise: {str(e)}")
+            flash('Error creating exercise. Please try again.', 'danger')
+            return redirect(url_for('new_exercise'))
+
+    return render_template('exercise_form.html')
 
 # Exercise database organized by categories
 EXERCISE_DATABASE = {
@@ -112,6 +195,10 @@ EXERCISE_DATABASE = {
         {'name': 'Deep Breathing', 'sets': 1, 'reps': 10}
     ]
 }
+
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
 
 def get_ai_workout(user):
     # Initialize the text generation pipeline with API key

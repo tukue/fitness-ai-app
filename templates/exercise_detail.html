@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('list_exercises') }}">Exercises</a></li>
+            <li class="breadcrumb-item active" aria-current="page">{{ exercise.name }}</li>
+        </ol>
+    </nav>
+
+    <div class="card">
+        <div class="card-body">
+            <h1 class="card-title">{{ exercise.name }}</h1>
+            <div class="mb-3">
+                <span class="badge bg-primary">{{ exercise.category }}</span>
+                <span class="badge bg-secondary">{{ exercise.difficulty }}</span>
+            </div>
+
+            <div class="row mb-4">
+                {% if exercise.image_url %}
+                <div class="col-md-6">
+                    <img src="{{ exercise.image_url }}" class="img-fluid rounded" alt="{{ exercise.name }}">
+                </div>
+                {% endif %}
+                
+                {% if exercise.video_url %}
+                <div class="col-md-6">
+                    <video class="w-100 rounded" controls>
+                        <source src="{{ exercise.video_url }}" type="video/mp4">
+                        Your browser does not support the video tag.
+                    </video>
+                </div>
+                {% endif %}
+            </div>
+
+            <h4>Description</h4>
+            <p class="card-text">{{ exercise.description }}</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
