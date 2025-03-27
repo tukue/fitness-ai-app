@@ -2,6 +2,8 @@ import pytest
 from app import User, get_ai_workout
 from unittest.mock import patch, Mock
 
+
+@pytest.mark.huggingface
 def test_workout_generation():
     """Test workout generation"""
     test_user = User(
@@ -44,7 +46,8 @@ def test_workout_generation():
             # Main workout exercises
             if test_user.experience_level == 'beginner':
                 assert exercise['sets'] <= 3  # Beginners should have fewer sets
-            
+
+@pytest.mark.huggingface           
 def test_workout_adaptation(client, app, test_user):
     """Test workout adaptation logic."""
     with app.app_context():
