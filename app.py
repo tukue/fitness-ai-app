@@ -153,46 +153,20 @@ def new_exercise():
 # Exercise database organized by categories
 EXERCISE_DATABASE = {
     'cardio': [
-        {'name': 'Jumping Jacks', 'sets': 3, 'reps': 20},
-        {'name': 'High Knees', 'sets': 3, 'reps': 30},
-        {'name': 'Mountain Climbers', 'sets': 3, 'reps': 20},
-        {'name': 'Burpees', 'sets': 3, 'reps': 10},
-        {'name': 'Jump Rope', 'sets': 3, 'reps': 50}
+        {'name': 'Jumping Jacks', 'sets': 3, 'reps': 20, 'description': 'Full body cardio exercise'},
+        {'name': 'Burpees', 'sets': 3, 'reps': 10, 'description': 'High-intensity full body movement'}
     ],
     'bodyweight': [
-        {'name': 'Push-ups', 'sets': 3, 'reps': 12},
-        {'name': 'Squats', 'sets': 3, 'reps': 15},
-        {'name': 'Lunges', 'sets': 3, 'reps': 12},
-        {'name': 'Plank Hold', 'sets': 3, 'reps': 30},
-        {'name': 'Mountain Climbers', 'sets': 3, 'reps': 20}
+        {'name': 'Push-ups', 'sets': 3, 'reps': 12, 'description': 'Upper body strength exercise'},
+        {'name': 'Squats', 'sets': 3, 'reps': 15, 'description': 'Lower body compound movement'}
     ],
     'strength': [
-        {'name': 'Dumbbell Rows', 'sets': 3, 'reps': 12},
-        {'name': 'Dumbbell Press', 'sets': 3, 'reps': 10},
-        {'name': 'Goblet Squats', 'sets': 3, 'reps': 12},
-        {'name': 'Shoulder Press', 'sets': 3, 'reps': 10},
-        {'name': 'Bicep Curls', 'sets': 3, 'reps': 12}
+        {'name': 'Dumbbell Rows', 'sets': 3, 'reps': 12, 'description': 'Back strength exercise'},
+        {'name': 'Shoulder Press', 'sets': 3, 'reps': 10, 'description': 'Upper body pushing movement'}
     ],
-    'core': [
-        {'name': 'Crunches', 'sets': 3, 'reps': 20},
-        {'name': 'Russian Twists', 'sets': 3, 'reps': 20},
-        {'name': 'Leg Raises', 'sets': 3, 'reps': 15},
-        {'name': 'Plank', 'sets': 3, 'reps': 30},
-        {'name': 'Side Planks', 'sets': 3, 'reps': 20}
-    ],
-    'warm_up': [
-        {'name': 'Arm Circles', 'sets': 2, 'reps': 10},
-        {'name': 'Leg Swings', 'sets': 2, 'reps': 10},
-        {'name': 'Hip Rotations', 'sets': 2, 'reps': 10},
-        {'name': 'Light Jogging', 'sets': 1, 'reps': 2},
-        {'name': 'Jumping Jacks', 'sets': 2, 'reps': 20}
-    ],
-    'cool_down': [
-        {'name': 'Standing Forward Bend', 'sets': 1, 'reps': 30},
-        {'name': 'Quad Stretch', 'sets': 1, 'reps': 30},
-        {'name': 'Child\'s Pose', 'sets': 1, 'reps': 30},
-        {'name': 'Cat-Cow Stretch', 'sets': 1, 'reps': 10},
-        {'name': 'Deep Breathing', 'sets': 1, 'reps': 10}
+    'flexibility': [
+        {'name': 'Forward Fold', 'sets': 1, 'reps': 30, 'description': 'Hamstring and lower back stretch'},
+        {'name': 'Cat-Cow Stretch', 'sets': 1, 'reps': 10, 'description': 'Spine mobility exercise'}
     ]
 }
 
@@ -212,10 +186,10 @@ def get_ai_workout(user):
     workout_exercises = []
     
     # Add warm-up exercises
-    warm_up = EXERCISE_DATABASE['warm_up'][:3]  # Select first 3 warm-up exercises
+    warm_up = EXERCISE_DATABASE['cardio'][:3]  # Select first 3 warm-up exercises
     for exercise in warm_up:
         workout_exercises.append({
-            'name': f"🔥 Warm-up: {exercise['name']}",
+            'name': f" Warm-up: {exercise['name']}",
             'sets': exercise['sets'],
             'reps': exercise['reps']
         })
@@ -226,14 +200,14 @@ def get_ai_workout(user):
         main_exercises = (
             EXERCISE_DATABASE['cardio'][:2] +  # 2 cardio exercises
             EXERCISE_DATABASE['bodyweight'][:2] +  # 2 bodyweight exercises
-            EXERCISE_DATABASE['core'][:1]  # 1 core exercise
+            EXERCISE_DATABASE['flexibility'][:1]  # 1 flexibility exercise
         )
     elif user.fitness_goal.lower() == 'muscle_gain':
-        # Focus on strength and core
+        # Focus on strength and bodyweight
         main_exercises = (
             EXERCISE_DATABASE['strength'][:3] +  # 3 strength exercises
             EXERCISE_DATABASE['bodyweight'][:1] +  # 1 bodyweight exercise
-            EXERCISE_DATABASE['core'][:1]  # 1 core exercise
+            EXERCISE_DATABASE['flexibility'][:1]  # 1 flexibility exercise
         )
     else:  # maintenance
         # Balanced mix
@@ -241,7 +215,7 @@ def get_ai_workout(user):
             EXERCISE_DATABASE['cardio'][:1] +  # 1 cardio exercise
             EXERCISE_DATABASE['bodyweight'][:2] +  # 2 bodyweight exercises
             EXERCISE_DATABASE['strength'][:1] +  # 1 strength exercise
-            EXERCISE_DATABASE['core'][:1]  # 1 core exercise
+            EXERCISE_DATABASE['flexibility'][:1]  # 1 flexibility exercise
         )
     
     # Adjust sets and reps based on experience level
@@ -257,10 +231,10 @@ def get_ai_workout(user):
         workout_exercises.append(adjusted_exercise)
     
     # Add cool-down exercises
-    cool_down = EXERCISE_DATABASE['cool_down'][:3]  # Select first 3 cool-down exercises
+    cool_down = EXERCISE_DATABASE['flexibility'][:3]  # Select first 3 cool-down exercises
     for exercise in cool_down:
         workout_exercises.append({
-            'name': f"❄️ Cool-down: {exercise['name']}",
+            'name': f"Cool-down: {exercise['name']}",
             'sets': exercise['sets'],
             'reps': exercise['reps']
         })
@@ -272,7 +246,7 @@ def get_ai_workout(user):
         # Extract a reasonable tip from the response
         tip = tip_response.split('\n')[0][:100]  # Take first line, limit to 100 chars
         workout_exercises.append({
-            'name': f"💡 Health Tip: {tip}",
+            'name': f"Health Tip: {tip}",
             'sets': 0,
             'reps': 0
         })
@@ -280,7 +254,7 @@ def get_ai_workout(user):
         print(f"Error generating health tip: {str(e)}")
         # Add a default tip
         workout_exercises.append({
-            'name': "💡 Health Tip: Remember to stay hydrated and maintain proper form throughout your workout.",
+            'name': "Health Tip: Remember to stay hydrated and maintain proper form throughout your workout.",
             'sets': 0,
             'reps': 0
         })
