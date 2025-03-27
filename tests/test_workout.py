@@ -13,7 +13,14 @@ def test_workout_generation():
         experience_level='beginner'
     )
     
-    workout = get_ai_workout(test_user)
+    # Mock the Hugging Face pipeline
+    with patch('transformers.pipeline') as mock_pipeline:
+        mock_pipeline.return_value = Mock()
+        mock_pipeline.return_value.return_value = [{
+            'generated_text': 'Stay hydrated and maintain proper form during workouts.'
+        }]
+        
+        workout = get_ai_workout(test_user)
     
     # Test workout structure
     assert isinstance(workout, list)
