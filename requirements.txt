@@ -4,7 +4,7 @@ Werkzeug==2.0.3
 Flask-SQLAlchemy==2.5.1
 Flask-Login==0.6.3
 Flask-CORS==3.0.10
-SQLAlchemy==2.0.23
+SQLAlchemy==1.4.41  # Downgraded for compatibility with Flask-SQLAlchemy 2.5.1
 
 # Testing
 pytest==7.4.3
@@ -13,6 +13,7 @@ pytest-flask==1.2.0
 # AI/ML
 transformers==4.36.2
 torch==2.2.0
+numpy==1.24.3  # Added explicit numpy version for compatibility
 
 # Utils
 python-dotenv==1.0.0
