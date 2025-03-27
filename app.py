@@ -395,7 +395,46 @@ def log_workout():
         db.session.add(exercise)
     
     db.session.commit()
-    return jsonify({'status': 'success'})
+    return jsonify({'status': 'success'}) 
+
+@app.route('/adapt_workout', methods=['POST'])
+@login_required
+def adapt_workout():
+    try:
+        # Log the incoming request data
+        app.logger.debug(f"Adapt workout request data: {request.json}")
+
+        # Get the workout data from the request
+        data = request.json
+        if not data or 'workout' not in data or 'exercises' not in data['workout']:
+            return jsonify({'error': 'Invalid input data'}), 400
+
+        workout = data['workout']
+        exercises = workout.get('exercises', [])
+
+        # Adapt the workout (e.g., increase sets/reps for advanced users)
+        adapted_exercises = []
+        for exercise in exercises:
+            adapted_exercise = exercise.copy()
+            if current_user.experience_level == 'beginner':
+                adapted_exercise['sets'] = max(1, exercise['sets'] - 1)
+                adapted_exercise['reps'] = max(1, int(exercise['reps'] * 0.8))
+            elif current_user.experience_level == 'advanced':
+                adapted_exercise['sets'] = exercise['sets'] + 1
+                adapted_exercise['reps'] = int(exercise['reps'] * 1.2)
+            else:  # Intermediate or default
+                adapted_exercise['sets'] = exercise['sets']
+                adapted_exercise['reps'] = exercise['reps']
+            adapted_exercises.append(adapted_exercise)
+
+        # Log the adapted workout
+        app.logger.debug(f"Adapted workout: {adapted_exercises}")
+
+        # Return the adapted workout
+        return jsonify({'workout': {'exercises': adapted_exercises}})
+    except Exception as e:
+        app.logger.error(f"Error in adapt_workout: {str(e)}")
+        return jsonify({'error': 'An unexpected error occurred'}), 500
 
 if __name__ == '__main__':
     with app.app_context():

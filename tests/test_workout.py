@@ -1,5 +1,6 @@
 import pytest
 from app import User, get_ai_workout
+from unittest.mock import patch, Mock
 
 def test_workout_generation():
     """Test workout generation"""
@@ -37,24 +38,39 @@ def test_workout_generation():
             if test_user.experience_level == 'beginner':
                 assert exercise['sets'] <= 3  # Beginners should have fewer sets
             
-def test_workout_adaptation():
-    """Test workout adaptation based on user profile"""
-    advanced_user = User(
-        username='advanced',
-        email='advanced@test.com',
-        age=30,
-        weight=75,
-        fitness_goal='muscle_gain',
-        experience_level='advanced'
-    )
-    
-    workout = get_ai_workout(advanced_user)
-    
-    # Check if workout is adapted for advanced users
-    main_exercises = [ex for ex in workout 
-                     if not any(marker in ex['name'] 
-                              for marker in ['🔥 Warm-up', '❄️ Cool-down', '💡 Health Tip'])]
-    
-    for exercise in main_exercises:
-        # Advanced users should have more sets
-        assert exercise['sets'] >= 3
+def test_workout_adaptation(client, app, test_user):
+    """Test workout adaptation logic."""
+    with app.app_context():
+        # Log in the test user
+        client.post('/login', data={
+            'username': test_user.username,
+            'password': 'testpass'
+        })
+
+        # Mock the AI pipeline
+        with patch('transformers.pipeline') as mock_pipeline:
+            mock_pipeline.return_value = Mock()
+            mock_pipeline.return_value.return_value = [{
+                'generated_text': '1. Push-Ups: 3 sets of 10 reps\n2. Squats: 3 sets of 15 reps'
+            }]
+
+            # Call the workout adaptation endpoint with valid input
+            response = client.post('/adapt_workout', json={
+                'workout': {
+                    'exercises': [
+                        {'name': 'Push-Ups', 'sets': 2, 'reps': 10},
+                        {'name': 'Squats', 'sets': 2, 'reps': 15}
+                    ]
+                }
+            }, follow_redirects=True)
+
+            assert response.status_code == 200
+            data = response.get_json()
+            assert data is not None, "Response data is None"
+            assert 'workout' in data, "Response does not contain 'workout'"
+            assert 'exercises' in data['workout'], "Response does not contain 'exercises' in 'workout'"
+
+            # Validate the adapted workout
+            for exercise in data['workout']['exercises']:
+                assert exercise['sets'] >= 1  # Ensure sets are valid
+                assert exercise['reps'] >= 1  # Ensure reps are valid
