@@ -3,6 +3,7 @@ pipeline {
     
     environment {
         VENV_NAME = 'venv'  // Define virtual environment name
+        MIN_DISK_SPACE = '2'  // Minimum required disk space in GB
     }
     
     stages {
@@ -11,8 +12,8 @@ pipeline {
                 sh '''
                     df -h /
                     FREE_SPACE=$(df -h / | awk 'NR==2 {print $4}' | sed 's/G//')
-                    if [ $(echo "$FREE_SPACE < 10" | bc -l) -eq 1 ]; then
-                        echo "Insufficient disk space. At least 10GB required."
+                    if [ $(echo "$FREE_SPACE < ${MIN_DISK_SPACE}" | bc -l) -eq 1 ]; then
+                        echo "Insufficient disk space. At least ${MIN_DISK_SPACE}GB required."
                         exit 1
                     fi
                 '''
@@ -83,4 +84,5 @@ pipeline {
         }
     }
 }
+
 
