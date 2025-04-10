@@ -1,16 +1,20 @@
 pipeline {
     agent any
-
-    environment {
-        PYTHON_VERSION = '3.10'
-        VENV_NAME = 'venv'
-        FLASK_ENV = 'testing'
-        SECRET_KEY = 'jenkins-test-key'
-        DATABASE_URL = 'sqlite:///:memory:'
-        HUGGINGFACE_API_KEY = 'dummy-key-for-testing'
-    }
-
+    
     stages {
+        stage('Check Disk Space') {
+            steps {
+                sh '''
+                    df -h /
+                    FREE_SPACE=$(df -h / | awk 'NR==2 {print $4}' | sed 's/G//')
+                    if (( $(echo "$FREE_SPACE < 10" | bc -l) )); then
+                        echo "Insufficient disk space. At least 10GB required."
+                        exit 1
+                    fi
+                '''
+            }
+        }
+        
         stage('Checkout') {
             steps {
                 checkout scm
