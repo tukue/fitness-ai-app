@@ -1,13 +1,17 @@
 pipeline {
     agent any
     
+    environment {
+        VENV_NAME = 'venv'  // Define virtual environment name
+    }
+    
     stages {
         stage('Check Disk Space') {
             steps {
                 sh '''
                     df -h /
                     FREE_SPACE=$(df -h / | awk 'NR==2 {print $4}' | sed 's/G//')
-                    if (( $(echo "$FREE_SPACE < 10" | bc -l) )); then
+                    if [ $(echo "$FREE_SPACE < 10" | bc -l) -eq 1 ]; then
                         echo "Insufficient disk space. At least 10GB required."
                         exit 1
                     fi
@@ -48,7 +52,7 @@ pipeline {
                 sh '''
                     . ${VENV_NAME}/bin/activate
                     
-                    # Run flake8 checks (using same settings as in test_ci_local.ps1)
+                    # Run flake8 checks
                     flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
                     flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
                 '''
@@ -69,7 +73,6 @@ pipeline {
 
     post {
         always {
-            // Clean up workspace
             cleanWs()
         }
         success {
@@ -80,3 +83,4 @@ pipeline {
         }
     }
 }
+
